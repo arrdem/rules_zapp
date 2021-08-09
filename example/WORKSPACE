@@ -1,0 +1,40 @@
+# WORKSPACE
+
+workspace(
+    name = "zapp_examples",
+)
+
+load(
+    "@bazel_tools//tools/build_defs/repo:git.bzl",
+    "git_repository",
+)
+
+####################################################################################################
+# Skylib
+####################################################################################################
+git_repository(
+    name = "bazel_skylib",
+    remote = "https://github.com/bazelbuild/bazel-skylib.git",
+    tag = "1.0.3",
+)
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+bazel_skylib_workspace()
+
+git_repository(
+    name = "rules_python",
+    remote = "https://github.com/bazelbuild/rules_python.git",
+    tag = "0.3.0",
+)
+
+git_repository(
+    name = "rules_zapp",
+    remote = "https://github.com/arrdem/rules_zapp.git",
+    tag = "0.1.0",
+)
+
+load("@rules_python//python:pip.bzl", "pip_install")
+
+pip_install(
+   name = "my_deps",
+   requirements = "//:requirements.txt",
+)
