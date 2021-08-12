@@ -26,16 +26,21 @@ def _store_path(path, ctx, imports):
 
     else:
         # Main workspace, for example 'mypackage/main.py'
-        # stored_path = ctx.workspace_name + "/" + path
-        stored_path = path
+        stored_path = ctx.workspace_name + "/" + path
 
-    matching_prefix = None
+    matching_prefixes = []
     for i in imports:
         if stored_path.startswith(i):
-            stored_path = stored_path[len(i):]
-            matching_prefix = i
-            break
+            matching_prefixes.append(i)
 
+    # Find the longest prefix match
+    matching_prefixes = sorted(matching_prefixes, key=len, reverse=True)
+
+    if matching_prefixes:
+        # Strip the longest matching prefix
+        stored_path = stored_path[len(matching_prefixes[0]):]
+
+    # Strip any trailing /
     stored_path = stored_path.lstrip("/")
 
     return stored_path
