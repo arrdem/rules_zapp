@@ -3,6 +3,7 @@ An implementation of driving zappc from Bazel.
 """
 
 
+load("@bazel_skylib//lib:collections.bzl", "collections")
 load("@rules_python//python:defs.bzl", "py_library", "py_binary")
 
 
@@ -71,12 +72,12 @@ def _zapp_impl(ctx):
     ]
 
     # Find the list of directories to add to sys
-    import_roots = [
+    import_roots = collections.uniq([
         r for r in ctx.attr.src[PyInfo].imports.to_list()
     ] + [
         # The workspace root is implicitly an import root
         ctx.workspace_name
-    ]
+    ])
 
     for r0 in import_roots:
         for r1 in import_roots:
