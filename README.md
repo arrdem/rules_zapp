@@ -38,7 +38,7 @@ workspace(
 git_repository(
     name = "rules_zapp",
     remote = "https://github.com/arrdem/rules_zapp.git",
-    tag = "0.1.0",
+    tag = "0.1.1",
 )
 
 $ cat BUILD
