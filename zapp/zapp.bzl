@@ -79,13 +79,6 @@ def _zapp_impl(ctx):
         ctx.workspace_name
     ])
 
-    for r0 in import_roots:
-        for r1 in import_roots:
-            if r0 == r1:
-                continue
-            elif r0.startswith(r1):
-                fail("Import root conflict between %s and %s" % r0, r1)
-
     # Dealing with main
     main_py_file = ctx.files.main
     main_py_ref = ctx.attr.entry_point
