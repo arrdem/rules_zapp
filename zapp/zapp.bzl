@@ -73,6 +73,9 @@ def _zapp_impl(ctx):
     # Find the list of directories to add to sys
     import_roots = [
         r for r in ctx.attr.src[PyInfo].imports.to_list()
+    ] + [
+        # The workspace root is implicitly an import root
+        ctx.workspace_name
     ]
 
     for r0 in import_roots:
