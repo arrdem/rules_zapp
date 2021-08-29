@@ -7,6 +7,7 @@ import io
 import json
 import os
 import pathlib
+from itertools import chain
 import stat
 import sys
 import zipfile
@@ -15,6 +16,7 @@ from shutil import move
 from tempfile import TemporaryDirectory
 
 from zapp.support.unpack import cache_wheel_path
+from zapp.support.pep425 import compress_tags, decompress_tag
 
 parser = argparse.ArgumentParser(description="The (bootstrap) Zapp compiler")
 parser.add_argument("-o", "--out", dest="output", help="Output target file")
@@ -81,7 +83,14 @@ def load_wheel(opts, manifest, path):
     """Load a single wheel, returning ..."""
 
     def _parse_email(msg):
-        return dict(Parser().parsestr(msg).items())
+        msg = Parser().parsestr(msg)
+        def _get(k):
+            v = msg.get_all(k)
+            if len(v) == 1:
+                return v[0]
+            else:
+                return v
+        return {k: _get(k) for k in msg.keys()}
 
     # RECORD seems to just record file reference checksums for validation
     # with open(os.path.join(path, "RECORD")) as recordf:
@@ -105,14 +114,16 @@ def load_wheel(opts, manifest, path):
     }
 
 
+
 def wheel_name(wheel):
     """Construct the "canonical" filename of the wheel."""
 
+    # https://www.python.org/dev/peps/pep-0425/
     tags = wheel["wheel"].get("Tag")
     if isinstance(tags, list):
-        tags = "-" + ".".join(sorted(wheel["wheel"]["Tag"]))
+        tags = "-" + compress_tags(chain(*[decompress_tag(t) for t in tags]))
     elif isinstance(tags, str):
-        tags = "-" + wheel["wheel"]["Tag"]
+        tags = "-" + tags
     else:
         tags = ""
 
@@ -155,17 +166,23 @@ def rezip_wheels(opts, manifest):
     # Zip up the wheels and insert wheel records to the manifest
     for w in wheels:
         # Try to cheat and hit in the local cache first rather than building wheels every time
-        wf = cache_wheel_path(wheel_name(w))
-        if wf.exists():
-            try:
-                wf.touch()
-            except OSError:
-                pass
-        else:
-            wf = zip_wheel(opts.tmpdir, w)
+        wn = wheel_name(w)
 
-        # Insert a new wheel source
-        manifest["wheels"][wheel_name(w)] = {"hashes": [], "source": wf}
+        # We may have a double-path dependency.
+        # If we DON'T, we have to zip
+        if wn not in manifest["wheels"]:
+            wf = cache_wheel_path(wn)
+            if wf.exists():
+                try:
+                    wf.touch()
+                except OSError:
+                    pass
+                wf = str(wf)
+            else:
+                wf = zip_wheel(opts.tmpdir, w)
+
+            # Insert a new wheel source
+            manifest["wheels"][wn] = {"hashes": [], "source": wf}
 
         # Expunge sources available in the wheel
         manifest["sources"] = dsub(manifest["sources"], w["sources"])
