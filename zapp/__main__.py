@@ -6,10 +6,10 @@ import argparse
 import io
 import json
 import os
-import sys
-import zipfile
 import pathlib
 import stat
+import sys
+import zipfile
 
 parser = argparse.ArgumentParser(description="The (bootstrap) Zapp compiler")
 parser.add_argument("-o", "--out", dest="output", help="Output target file")
@@ -100,17 +100,22 @@ def main():
 
     if opts.debug:
         from pprint import pprint
-        pprint({
-            "opts": {k: getattr(opts, k) for k in dir(opts) if not k.startswith("_")},
-            "manifest": manifest
-        })
 
-    with open(opts.output, 'w') as zapp:
+        pprint(
+            {
+                "opts": {
+                    k: getattr(opts, k) for k in dir(opts) if not k.startswith("_")
+                },
+                "manifest": manifest,
+            }
+        )
+
+    with open(opts.output, "w") as zapp:
         shebang = "#!" + manifest["shebang"] + "\n"
         zapp.write(shebang)
 
     # Now we're gonna build the zapp from the manifest
-    with zipfile.ZipFile(opts.output, 'a') as zapp:
+    with zipfile.ZipFile(opts.output, "a") as zapp:
 
         # Append the __main__.py generated record
         zapp.writestr("__main__.py", make_dunder_main(manifest))

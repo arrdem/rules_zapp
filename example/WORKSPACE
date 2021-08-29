@@ -26,11 +26,16 @@ git_repository(
     tag = "0.3.0",
 )
 
-git_repository(
+# git_repository(
+#     name = "rules_zapp",
+#     remote = "https://github.com/arrdem/rules_zapp.git",
+#     tag = "0.1.1",
+#     # branch = "trunk",
+# )
+
+local_repository(
     name = "rules_zapp",
-    remote = "https://github.com/arrdem/rules_zapp.git",
-    tag = "0.1.1",
-    # branch = "trunk",
+    path = "../",
 )
 
 load("@rules_python//python:pip.bzl", "pip_install")

@@ -9,6 +9,7 @@ def main():
 
     try:
         import yaml
+
         print("I have YAML! and nothing to do with it.", yaml.__file__)
     except ImportError:
         print("Don't have YAML.")

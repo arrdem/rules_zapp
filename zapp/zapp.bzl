@@ -67,8 +67,6 @@ def _zapp_impl(ctx):
     # TODO: also handle ctx.attr.src.data_runfiles.symlinks
     srcs = [
         f for f in ctx.attr.src.default_runfiles.files.to_list()
-        # Strip out transitive sources from PyPi archives
-        if f.path.find("/pypi__") == -1
     ]
 
     # Find the list of directories to add to sys

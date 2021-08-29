@@ -1,14 +1,11 @@
 """Conditionally unpack a zapp (and its deps)."""
 
-import sys
 import os
+import sys
 from pathlib import Path
 from zipfile import ZipFile
 
-from .manifest import manifest
-
-
-MANIFEST = manifest()
+from zapp.support.manifest import manifest
 
 
 def cache_root() -> Path:
@@ -39,7 +36,7 @@ def unpack_deps():
 
     # For each wheel, touch the existing cached wheel or unpack this one.
     with ZipFile(sys.argv[0], "r") as zf:
-        for whl, config in MANIFEST["wheels"].items():
+        for whl, config in manifest()["wheels"].items():
             cached_whl = cache_wheel_path(whl)
             if cached_whl.exists():
                 cached_whl.touch()
