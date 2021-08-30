@@ -38,7 +38,14 @@ workspace(
 git_repository(
     name = "rules_zapp",
     remote = "https://github.com/arrdem/rules_zapp.git",
-    tag = "0.1.3",
+    tag = "0.1.4",
+)
+
+# ...
+
+# A Python 3 toolchain from somewhere
+register_toolchains(
+    "//zapp:python3_toolchain",
 )
 
 $ cat BUILD
