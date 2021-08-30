@@ -104,7 +104,7 @@ def load_wheel(opts, manifest, path):
 
     prefix = os.path.dirname(path)
 
-    sources = {k: v for k, v in manifest["sources"].items() if v.startswith(prefix)}
+    sources = {k: v for k, v in manifest["sources"].items() if v["source"].startswith(prefix)}
 
     return {
         # "record": record,
@@ -112,7 +112,6 @@ def load_wheel(opts, manifest, path):
         "wheel": wheel,
         "sources": sources,
     }
-
 
 
 def wheel_name(wheel):
@@ -145,7 +144,7 @@ def zip_wheel(tmpdir, wheel):
 
     with zipfile.ZipFile(wheel_file, "w") as whl:
         for dest, src in wheel["sources"].items():
-            whl.write(src, dest)
+            whl.write(src["source"], dest)
 
     return wheel_file
 
@@ -158,15 +157,17 @@ def rezip_wheels(opts, manifest):
     Files sourced from unzipped wheels should be removed, and a single wheel reference inserted."""
 
     wheels = [
-        load_wheel(opts, manifest, os.path.dirname(p))
-        for p in manifest["sources"].values()
-        if p.endswith("/WHEEL")
+        load_wheel(opts, manifest, os.path.dirname(s["source"]))
+        for s in manifest["sources"].values()
+        if s["source"].endswith("/WHEEL")
     ]
 
     # Zip up the wheels and insert wheel records to the manifest
     for w in wheels:
         # Try to cheat and hit in the local cache first rather than building wheels every time
         wn = wheel_name(w)
+        # Expunge sources available in the wheel
+        manifest["sources"] = dsub(manifest["sources"], w["sources"])
 
         # We may have a double-path dependency.
         # If we DON'T, we have to zip
@@ -184,13 +185,10 @@ def rezip_wheels(opts, manifest):
             # Insert a new wheel source
             manifest["wheels"][wn] = {"hashes": [], "source": wf}
 
-        # Expunge sources available in the wheel
-        manifest["sources"] = dsub(manifest["sources"], w["sources"])
-
     return manifest
 
 
-def generate_dunder_inits(manifest):
+def generate_dunder_inits(opts, manifest):
     """Hack the manifest to insert __init__ files as needed."""
 
     sources = manifest["sources"]
@@ -207,20 +205,46 @@ def generate_dunder_inits(manifest):
 def insert_manifest_json(opts, manifest):
     """Insert the manifest.json file."""
 
-    manifest["sources"]["zapp/manifest.json"] = opts.manifest
+    tempf = os.path.join(opts.tmpdir, "manifest.json")
+
+    # Note ordering to enable somewhat self-referential manifest
+    manifest["sources"]["zapp/manifest.json"] = {"source": tempf, "hashes": []}
+
+    with open(tempf, "w") as fp:
+        fp.write(json.dumps(manifest))
 
     return manifest
 
 
-def enable_unzipping(manifest):
+def generate_dunder_main(opts, manifest):
+    """Insert the __main__.py to the manifest."""
+
+    if "__main__.py" in manifest["sources"]:
+        print("Error: __main__.py conflict.", file=sys.stderr)
+        exit(1)
+
+    tempf = os.path.join(opts.tmpdir, "__main__.py")
+    # Note ordering to enable somewhat self-referential manifest
+    manifest["sources"]["__main__.py"] = {"source": tempf, "hashes": []}
+    with open(tempf, "w") as fp:
+        fp.write(make_dunder_main(manifest))
+
+    return manifest
+
+
+def enable_unzipping(opts, manifest):
     """Inject unzipping behavior as needed."""
 
     if manifest["wheels"]:
-        manifest["prelude_points"].append("zapp.support.unpack:unpack_deps")
+        manifest["prelude_points"].extend([
+            "zapp.support.unpack:unpack_deps",
+            "zapp.support.unpack:install_deps",
+        ])
 
-    # FIXME:
-    # if not manifest["zip_safe"]:
-    # enable a similar injection for unzipping
+    if not manifest["zip_safe"]:
+        manifest["prelude_points"].extend([
+            "zapp.support.unpack:unpack_zapp",
+        ])
 
     return manifest
 
@@ -235,11 +259,13 @@ def main():
         setattr(opts, "tmpdir", d)
 
         manifest = rezip_wheels(opts, manifest)
-        manifest = insert_manifest_json(opts, manifest)
-        manifest = enable_unzipping(manifest)
+        manifest = enable_unzipping(opts, manifest)
         # Patch the manifest to insert needed __init__ files
+        manifest = generate_dunder_inits(opts, manifest)
+        manifest = generate_dunder_main(opts, manifest)
+        # Generate and insert the manifest
         # NOTE: This has to be the LAST thing we do
-        manifest = generate_dunder_inits(manifest)
+        manifest = insert_manifest_json(opts, manifest)
 
         if opts.debug:
             from pprint import pprint
@@ -257,22 +283,14 @@ def main():
             shebang = "#!" + manifest["shebang"] + "\n"
             zapp.write(shebang)
 
-        if "__main__.py" in manifest["sources"]:
-            print("Error: __main__.py conflict.", file=sys.stderr)
-            exit(1)
-
         # Now we're gonna build the zapp from the manifest
         with zipfile.ZipFile(opts.output, "a") as zapp:
-
-            # Append the __main__.py generated record
-            zapp.writestr("__main__.py", make_dunder_main(manifest))
-
             # Append user-specified sources
             for dest, src in sorted(manifest["sources"].items(), key=lambda x: x[0]):
                 if src is None:
                     zapp.writestr(dest, "")
                 else:
-                    zapp.write(src, dest)
+                    zapp.write(src["source"], dest)
 
             # Append user-specified libraries
             for whl, config in manifest["wheels"].items():

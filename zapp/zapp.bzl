@@ -125,7 +125,7 @@ def _zapp_impl(ctx):
         output = manifest_file,
         content = json.encode({
             "shebang": ctx.attr.shebang,
-            "sources": sources_map,
+            "sources": {d: {"hashes": [], "source": s} for d, s in sources_map.items()},
             "zip_safe": ctx.attr.zip_safe,
             "prelude_points": ctx.attr.prelude_points,
             "entry_point": main_py_ref,
@@ -153,25 +153,32 @@ def _zapp_impl(ctx):
     )
 
     # .zapp file itself has no runfiles and no providers
-    return []
+    return struct(
+      runfiles = ctx.runfiles(
+          files = [ctx.outputs.executable],
+          transitive_files = None,
+          collect_default = True,
+      )
+  )
 
+_zapp_attrs = {
+    "src": attr.label(mandatory = True),
+    "main": attr.label(allow_single_file = True),
+    "wheels": attr.label_list(),
+    "entry_point": attr.string(),
+    "prelude_points": attr.string_list(),
+    "compiler": attr.label(
+        default = Label(DEFAULT_COMPILER),
+        executable = True,
+        cfg = "host",
+    ),
+    "shebang": attr.string(default = "/usr/bin/env python3"),
+    "zip_safe": attr.bool(default = True),
+    "root_import": attr.bool(default = False),
+}
 
-zapp = rule(
-    attrs = {
-        "src": attr.label(mandatory = True),
-        "main": attr.label(allow_single_file = True),
-        "wheels": attr.label_list(),
-        "entry_point": attr.string(),
-        "prelude_points": attr.string_list(),
-        "compiler": attr.label(
-            default = Label(DEFAULT_COMPILER),
-            executable = True,
-            cfg = "host",
-        ),
-        "shebang": attr.string(default = "/usr/bin/env python3"),
-        "zip_safe": attr.bool(default = True),
-        "root_import": attr.bool(default = False),
-    },
+_zapp = rule(
+    attrs = _zapp_attrs,
     executable = True,
     implementation = _zapp_impl,
 )
@@ -186,6 +193,7 @@ def zapp_binary(name,
                 test=False,
                 compiler=None,
                 zip_safe=True,
+                rule=_zapp,
                 **kwargs):
     """A self-contained, single-file Python program, with a .zapp file extension.
 
@@ -232,7 +240,7 @@ def zapp_binary(name,
         **kwargs
     )
 
-    zapp(
+    rule(
         name = name,
         src = name + ".lib",
         compiler = compiler,
@@ -244,8 +252,14 @@ def zapp_binary(name,
     )
 
 
+_zapp_test = rule(
+    attrs = _zapp_attrs,
+    test = True,
+    implementation = _zapp_impl,
+)
+
+
 def zapp_test(name, **kwargs):
     """Same as zapp_binary, just sets the test=True bit."""
 
-    kwargs.pop("test")
-    zapp_binary(name, test=True, **kwargs)
+    zapp_binary(name, rule=_zapp_test, **kwargs)

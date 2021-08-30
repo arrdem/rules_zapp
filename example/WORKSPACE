@@ -20,6 +20,9 @@ git_repository(
 load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 bazel_skylib_workspace()
 
+####################################################################################################
+# rules_python
+####################################################################################################
 git_repository(
     name = "rules_python",
     remote = "https://github.com/bazelbuild/rules_python.git",
@@ -41,6 +44,6 @@ local_repository(
 load("@rules_python//python:pip.bzl", "pip_install")
 
 pip_install(
-   name = "my_deps",
-   requirements = "//:requirements.txt",
+    name = "my_deps",
+    requirements = "//:requirements.txt",
 )
