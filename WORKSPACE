@@ -32,3 +32,7 @@ git_repository(
     remote = "https://github.com/bazelbuild/rules_python.git",
     tag = "0.3.0",
 )
+
+register_toolchains(
+    "//zapp:zappc_toolchain",
+)

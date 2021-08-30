@@ -31,6 +31,16 @@ git_repository(
 
 register_toolchains("//:python3_toolchain")
 
+load("@rules_python//python:pip.bzl", "pip_install")
+
+pip_install(
+    name = "my_deps",
+    requirements = "//:requirements.txt",
+)
+
+####################################################################################################
+# rules_zapp
+####################################################################################################
 # git_repository(
 #     name = "rules_zapp",
 #     remote = "https://github.com/arrdem/rules_zapp.git",
@@ -43,9 +53,6 @@ local_repository(
     path = "../",
 )
 
-load("@rules_python//python:pip.bzl", "pip_install")
-
-pip_install(
-    name = "my_deps",
-    requirements = "//:requirements.txt",
+register_toolchains(
+    "@rules_zapp//zapp:zappc_toolchain",
 )

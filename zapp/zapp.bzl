@@ -11,6 +11,31 @@ DEFAULT_COMPILER = "@rules_zapp//zapp:zappc"
 DEFAULT_RUNTIME  = "@rules_zapp//zapp:zapp_support"
 
 
+ZappcInfo = provider(
+    doc = "Information about how to invoke the zapp compiler.",
+    fields = ["compiler", "compiler_path"]
+)
+
+
+def _zapp_toolchain_impl(ctx):
+    toolchain_info = platform_common.ToolchainInfo(
+        zappc = ZappcInfo(
+            compiler = ctx.attr.compiler,
+            compiler_path = ctx.attr.compiler_path,
+        ),
+    )
+    return [toolchain_info]
+
+
+zapp_toolchain = rule(
+    implementation = _zapp_toolchain_impl,
+    attrs = {
+        "compiler_path": attr.string(),
+        "compiler": attr.label(),
+    },
+)
+
+
 def _store_path(path, ctx, imports):
     """Given a path, prepend the workspace name as the zappent directory"""
 
@@ -144,6 +169,14 @@ def _zapp_impl(ctx):
         is_executable = False,
     )
 
+    zappc_chain = (ctx.attr.compiler or ctx.toolchains["@rules_zapp//zapp:toolchain_type"]).zappc
+    if zappc_chain.compiler:
+        zappc = zappc_chain.compiler.files_to_run
+    elif zappc_chain.compiler_path:
+        zappc = zappc_chain.compiler_path
+    else:
+        fail("No zappc toolchain available!")
+
     # Run compiler
     ctx.actions.run(
         inputs = [
@@ -152,7 +185,7 @@ def _zapp_impl(ctx):
         tools = [],
         outputs = [ctx.outputs.executable],
         progress_message = "Building zapp file %s" % ctx.label,
-        executable = ctx.executable.compiler,
+        executable = zappc,
         arguments = [
             "--debug",
             "-o", ctx.outputs.executable.path,
@@ -171,17 +204,13 @@ def _zapp_impl(ctx):
       )
   )
 
+
 _zapp_attrs = {
     "src": attr.label(mandatory = True),
     "main": attr.label(allow_single_file = True),
     "wheels": attr.label_list(),
     "entry_point": attr.string(),
     "prelude_points": attr.string_list(),
-    "compiler": attr.label(
-        default = Label(DEFAULT_COMPILER),
-        executable = True,
-        cfg = "host",
-    ),
     "shebang": attr.string(default = "/usr/bin/env %py3%"),
     "zip_safe": attr.bool(default = True),
     "root_import": attr.bool(default = False),
@@ -193,7 +222,8 @@ _zapp = rule(
     implementation = _zapp_impl,
     toolchains = [
         "@bazel_tools//tools/python:toolchain_type",
-    ]
+        "@rules_zapp//zapp:toolchain_type",
+    ],
 )
 
 
@@ -204,7 +234,6 @@ def zapp_binary(name,
                 deps=[],
                 imports=[],
                 test=False,
-                compiler=None,
                 zip_safe=True,
                 _rule=_zapp,
                 **kwargs):
@@ -218,9 +247,6 @@ def zapp_binary(name,
 
       prelude_points:
         Additional scripts (zapp middlware) to run before main.
-
-      compiler:
-        Lable identifying the zapp compiler to use. You shouldn't need to change this.
 
       zip_safe:
         Whether to import Python code and read datafiles directly from the zip
@@ -256,7 +282,6 @@ def zapp_binary(name,
     _rule(
         name = name,
         src = name + ".lib",
-        compiler = compiler,
         main = main,
         entry_point = entry_point,
         prelude_points = prelude_points,
@@ -271,7 +296,8 @@ _zapp_test = rule(
     implementation = _zapp_impl,
     toolchains = [
         "@bazel_tools//tools/python:toolchain_type",
-    ]
+        "@rules_zapp//zapp:toolchain_type",
+    ],
 )
 
 
