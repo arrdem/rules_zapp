@@ -184,7 +184,6 @@ _zapp_attrs = {
     ),
     "shebang": attr.string(default = "/usr/bin/env %py3%"),
     "zip_safe": attr.bool(default = True),
-    "root_import": attr.bool(default = False),
 }
 
 _zapp = rule(
