@@ -29,6 +29,8 @@ git_repository(
     tag = "0.3.0",
 )
 
+register_toolchains("//:python3_toolchain")
+
 # git_repository(
 #     name = "rules_zapp",
 #     remote = "https://github.com/arrdem/rules_zapp.git",

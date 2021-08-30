@@ -3,11 +3,38 @@ load("@rules_zapp//zapp:zapp.bzl",
      "zapp_test",
 )
 
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl",
+     "py_library",
+     "py_runtime_pair"
+)
 
 load("@my_deps//:requirements.bzl",
      py_requirement="requirement",
 )
+
+# Configuring a Python runtime
+
+py_runtime(
+    name = "python3_runtime",
+    files = [],
+    interpreter_path = "/usr/bin/python3",
+    python_version = "PY3",
+    visibility = ["//visibility:public"],
+)
+
+py_runtime_pair(
+    name = "python_runtime",
+    py2_runtime = None,
+    py3_runtime = ":python3_runtime",
+)
+
+toolchain(
+    name = "python3_toolchain",
+    toolchain = ":python_runtime",
+    toolchain_type = "@bazel_tools//tools/python:toolchain_type",
+)
+
+# Zapp examples & tests
 
 zapp_test(
     name = "hello_script",

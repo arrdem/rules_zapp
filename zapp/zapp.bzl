@@ -121,10 +121,20 @@ def _zapp_impl(ctx):
 
     # Write the list to the manifest file
     manifest_file = ctx.actions.declare_file(ctx.label.name + ".zapp-manifest.json")
+
+    # Figure out the Python 3 toolchain to use
+    runtime = ctx.toolchains["@bazel_tools//tools/python:toolchain_type"].py3_runtime
+    if runtime.interpreter_path:
+        py3 = runtime.interpreter_path
+    elif runtime.interpreter:
+        py3 = runtime.interpreter.path
+    else:
+        fail("No Python 3 toolchain available")
+
     ctx.actions.write(
         output = manifest_file,
         content = json.encode({
-            "shebang": ctx.attr.shebang,
+            "shebang": ctx.attr.shebang.replace("%py3%", py3),
             "sources": {d: {"hashes": [], "source": s} for d, s in sources_map.items()},
             "zip_safe": ctx.attr.zip_safe,
             "prelude_points": ctx.attr.prelude_points,
@@ -172,7 +182,7 @@ _zapp_attrs = {
         executable = True,
         cfg = "host",
     ),
-    "shebang": attr.string(default = "/usr/bin/env python3"),
+    "shebang": attr.string(default = "/usr/bin/env %py3%"),
     "zip_safe": attr.bool(default = True),
     "root_import": attr.bool(default = False),
 }
@@ -181,6 +191,9 @@ _zapp = rule(
     attrs = _zapp_attrs,
     executable = True,
     implementation = _zapp_impl,
+    toolchains = [
+        "@bazel_tools//tools/python:toolchain_type",
+    ]
 )
 
 
@@ -193,7 +206,7 @@ def zapp_binary(name,
                 test=False,
                 compiler=None,
                 zip_safe=True,
-                rule=_zapp,
+                _rule=_zapp,
                 **kwargs):
     """A self-contained, single-file Python program, with a .zapp file extension.
 
@@ -240,7 +253,7 @@ def zapp_binary(name,
         **kwargs
     )
 
-    rule(
+    _rule(
         name = name,
         src = name + ".lib",
         compiler = compiler,
@@ -256,10 +269,13 @@ _zapp_test = rule(
     attrs = _zapp_attrs,
     test = True,
     implementation = _zapp_impl,
+    toolchains = [
+        "@bazel_tools//tools/python:toolchain_type",
+    ]
 )
 
 
 def zapp_test(name, **kwargs):
     """Same as zapp_binary, just sets the test=True bit."""
 
-    zapp_binary(name, rule=_zapp_test, **kwargs)
+    zapp_binary(name, _rule=_zapp_test, **kwargs)
