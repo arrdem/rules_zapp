@@ -29,12 +29,21 @@ git_repository(
     tag = "0.3.0",
 )
 
-register_toolchains("//:python3_toolchain")
+load("@rules_python//python:pip.bzl", "pip_install")
+
+pip_install(
+    name = "my_deps",
+    requirements = "//:requirements.txt",
+)
+
+####################################################################################################
+# rules_zapp
+####################################################################################################
 
 # git_repository(
 #     name = "rules_zapp",
 #     remote = "https://github.com/arrdem/rules_zapp.git",
-#     tag = "0.1.1",
+#     tag = "0.1.3",
 #     # branch = "trunk",
 # )
 
@@ -43,9 +52,7 @@ local_repository(
     path = "../",
 )
 
-load("@rules_python//python:pip.bzl", "pip_install")
-
-pip_install(
-    name = "my_deps",
-    requirements = "//:requirements.txt",
+# Use the py3 default toolchain from zapp for a quickstart
+register_toolchains(
+    "@rules_zapp//zapp:python3_toolchain",
 )

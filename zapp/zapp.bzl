@@ -177,13 +177,14 @@ _zapp_attrs = {
     "wheels": attr.label_list(),
     "entry_point": attr.string(),
     "prelude_points": attr.string_list(),
+    "zip_safe": attr.bool(default = True),
+    # FIXME: These are really toolchain parameters, probably.
     "compiler": attr.label(
         default = Label(DEFAULT_COMPILER),
         executable = True,
         cfg = "host",
     ),
     "shebang": attr.string(default = "/usr/bin/env %py3%"),
-    "zip_safe": attr.bool(default = True),
 }
 
 _zapp = rule(

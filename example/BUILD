@@ -36,6 +36,12 @@ toolchain(
 
 # Zapp examples & tests
 
+py_test(
+    name = "hello_native",
+    main = "hello.py",
+    srcs = ["hello.py"],
+)
+
 zapp_test(
     name = "hello_script",
     main = "hello.py",

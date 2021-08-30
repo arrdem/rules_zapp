@@ -27,8 +27,18 @@ git_repository(
 load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 bazel_skylib_workspace()
 
+####################################################################################################
+# rules_python
+####################################################################################################
+
 git_repository(
     name = "rules_python",
     remote = "https://github.com/bazelbuild/rules_python.git",
     tag = "0.3.0",
+)
+
+# And so that zapp can zapp itself...
+# Note that consumers DO NOT get this dependency "for free".
+register_toolchains(
+    "//zapp:python3_toolchain",
 )
