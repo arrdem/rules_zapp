@@ -51,7 +51,7 @@ def _check_script(point, sources_map):
     """Check that a given 'script' (eg. module:fn ref.) maps to a file in sources."""
 
     fname = point.split(":")[0].replace(".", "/") + ".py"
-    if fname not in sources_map:
+    if fname not in [e[0] for e in sources_map]:
         fail("Point %s (%s) is not a known source!" % (fname, sources_map))
 
 
@@ -98,17 +98,17 @@ def _zapp_impl(ctx):
 
     # Make a manifest of files to store in the .zapp file.  The
     # runfiles manifest is not quite right, so we make our own.
-    sources_map = {}
+    sources_map = []
 
     # Now add the regular (source and generated) files
     for input_file in srcs:
         stored_path = _store_path(input_file.short_path, ctx, import_roots)
         if stored_path:
             local_path = input_file.path
-            if stored_path in sources_map and sources_map[stored_path] != '':
-                fail("File path conflict between %s and %s" % sources_map[stored_path], local_path)
-
-            sources_map[stored_path] = local_path
+            conflicts = [e for e in sources_map if e[0] == stored_path]
+            if conflicts:
+                print("File %s conflicts with others, %s" % (input_file, conflicts))
+            sources_map.append([stored_path, local_path])
 
     _check_script(main_py_ref, sources_map)
     for p in ctx.attr.prelude_points:
@@ -135,7 +135,7 @@ def _zapp_impl(ctx):
         output = manifest_file,
         content = json.encode({
             "shebang": ctx.attr.shebang.replace("%py3%", py3),
-            "sources": {d: {"hashes": [], "source": s} for d, s in sources_map.items()},
+            "sources": [[d, {"hashes": [], "source": s}] for d, s in sources_map],
             "zip_safe": ctx.attr.zip_safe,
             "prelude_points": ctx.attr.prelude_points,
             "entry_point": main_py_ref,

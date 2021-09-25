@@ -6,10 +6,12 @@ import argparse
 import io
 import json
 import os
+import ast
 import pathlib
 from itertools import chain
 import stat
 import sys
+from collections import defaultdict
 import zipfile
 from email.parser import Parser
 from shutil import move
@@ -57,7 +59,7 @@ for script in {scripts!r}:
 def dsub(d1, d2):
     """Dictionary subtraction. Remove k/vs from d1 if they occur in d2."""
 
-    return {k: v for k, v in d1.items() if k not in d2 or d2[k] != v}
+    return [(k, v) for k, v in d1 if not k in (_k for _k, _ in d2)]
 
 
 def make_dunder_main(manifest):
@@ -104,7 +106,7 @@ def load_wheel(opts, manifest, path):
 
     prefix = os.path.dirname(path)
 
-    sources = {k: v for k, v in manifest["sources"].items() if v["source"].startswith(prefix)}
+    sources = [(dest, spec,) for dest, spec in manifest["sources"] if spec["source"].startswith(prefix)]
 
     return {
         # "record": record,
@@ -143,7 +145,7 @@ def zip_wheel(tmpdir, wheel):
     wheel_file = os.path.join(tmpdir, wheel_name(wheel))
 
     with zipfile.ZipFile(wheel_file, "w") as whl:
-        for dest, src in wheel["sources"].items():
+        for dest, src in wheel["sources"]:
             whl.write(src["source"], dest)
 
     return wheel_file
@@ -158,7 +160,7 @@ def rezip_wheels(opts, manifest):
 
     wheels = [
         load_wheel(opts, manifest, os.path.dirname(s["source"]))
-        for s in manifest["sources"].values()
+        for _, s in manifest["sources"]
         if s["source"].endswith("/WHEEL")
     ]
 
@@ -168,6 +170,11 @@ def rezip_wheels(opts, manifest):
         wn = wheel_name(w)
         # Expunge sources available in the wheel
         manifest["sources"] = dsub(manifest["sources"], w["sources"])
+
+        if opts.debug:
+            from pprint import pprint
+            print("---")
+            pprint({"$type": "whl", **w})
 
         # We may have a double-path dependency.
         # If we DON'T, we have to zip
@@ -182,8 +189,15 @@ def rezip_wheels(opts, manifest):
             else:
                 wf = zip_wheel(opts.tmpdir, w)
 
+
             # Insert a new wheel source
             manifest["wheels"][wn] = {"hashes": [], "source": wf}
+
+    return manifest
+
+
+def ensure_srcs_map(opts, manifest):
+    manifest["sources"] = dict(manifest["sources"])
 
     return manifest
 
@@ -259,6 +273,7 @@ def main():
         setattr(opts, "tmpdir", d)
 
         manifest = rezip_wheels(opts, manifest)
+        manifest = ensure_srcs_map(opts, manifest)
         manifest = enable_unzipping(opts, manifest)
         # Patch the manifest to insert needed __init__ files
         manifest = generate_dunder_inits(opts, manifest)
@@ -270,8 +285,10 @@ def main():
         if opts.debug:
             from pprint import pprint
 
+            print("---")
             pprint(
                 {
+                    "$type": "zapp",
                     "opts": {
                         k: getattr(opts, k) for k in dir(opts) if not k.startswith("_")
                     },
