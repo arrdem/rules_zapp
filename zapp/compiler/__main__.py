@@ -13,6 +13,8 @@ import zipfile
 from collections import defaultdict
 from email.parser import Parser
 from itertools import chain
+from pathlib import Path
+from pprint import pprint
 from shutil import move
 from tempfile import TemporaryDirectory
 
@@ -148,13 +150,26 @@ def wheel_name(wheel):
 def zip_wheel(tmpdir, wheel):
     """Build a 'tempfile' containing the proper contents of the wheel."""
 
-    wheel_file = os.path.join(tmpdir, wheel_name(wheel))
+    wn = wheel_name(wheel)
+    cached_path = cache_wheel_path(wn)
+    wheel_file = os.path.join(tmpdir, wn)
 
     with zipfile.ZipFile(wheel_file, "w") as whl:
         for dest, src in wheel["sources"]:
             whl.write(src["source"], dest)
 
-    return wheel_file
+    try:
+        # Attempt to enter the (re)built wheel into the cache. This could fail
+        # due to coss-device rename problems, or due to something else having
+        # concurrently built the same wheel and won the race.
+        #
+        # FIXME: This probably needs some guardrails to ensure that we only put
+        # architecture-independent wheels into the cache this way to avoid the
+        # plethora of "missbehaved wheels" problems that pip deals with.
+        Path(wheel_file).rename(cached_path)
+        return str(cached_path)
+    except OSError:
+        return wheel_file
 
 
 def rezip_wheels(opts, manifest):
@@ -177,12 +192,6 @@ def rezip_wheels(opts, manifest):
         # Expunge sources available in the wheel
         manifest["sources"] = dsub(manifest["sources"], w["sources"])
 
-        if opts.debug:
-            from pprint import pprint
-
-            print("---")
-            pprint({"$type": "whl", **w})
-
         # We may have a double-path dependency.
         # If we DON'T, we have to zip
         if wn not in manifest["wheels"]:
@@ -194,6 +203,10 @@ def rezip_wheels(opts, manifest):
                     pass
                 wf = str(wf)
             else:
+                if opts.debug:
+                    print("---")
+                    pprint({"$type": "whl", **w})
+
                 wf = zip_wheel(opts.tmpdir, w)
 
             # Insert a new wheel source
@@ -293,8 +306,6 @@ def main():
         manifest = insert_manifest_json(opts, manifest)
 
         if opts.debug:
-            from pprint import pprint
-
             print("---")
             pprint(
                 {

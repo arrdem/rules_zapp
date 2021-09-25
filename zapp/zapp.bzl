@@ -160,6 +160,9 @@ def _zapp_impl(ctx):
         ],
         mnemonic = "PythonCompile",
         use_default_shell_env = True,
+        execution_requirements = {
+            "no-sandbox": "",  # So zappc can use a filesystem cache of (re)build wheels
+        },
     )
 
     # .zapp file itself has no runfiles and no providers
