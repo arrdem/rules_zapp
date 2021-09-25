@@ -95,10 +95,6 @@ def load_wheel(opts, manifest, path):
 
         return {k: _get(k) for k in msg.keys()}
 
-    # RECORD seems to just record file reference checksums for validation
-    # with open(os.path.join(path, "RECORD")) as recordf:
-    #     record = recordf.read()
-
     with open(os.path.join(path, "METADATA")) as metaf:
         meta = _parse_email(metaf.read())
 
@@ -107,6 +103,7 @@ def load_wheel(opts, manifest, path):
 
     prefix = os.path.dirname(path)
 
+    # Naive glob of sources; note that bazel may hvae inserted empty __init__.py trash
     sources = [
         (
             dest,
@@ -115,6 +112,23 @@ def load_wheel(opts, manifest, path):
         for dest, spec in manifest["sources"]
         if spec["source"].startswith(prefix)
     ]
+
+    # Retain only manifest-listed sources (dealing with __init__.py trash, but maybe not all conflicts)
+    with open(os.path.join(path, "RECORD")) as recordf:
+        known_srcs = set()
+        for line in recordf:
+            srcname, *_ = line.split(",")
+            known_srcs.add(srcname)
+
+        sources = [
+            (dest, spec)
+            for dest, spec in sources
+            if dest in known_srcs or not dest.endswith("__init__.py")
+        ]
+
+        # FIXME: Check hashes & sizes of manifest-listed sources and abort on error/conflict.
+
+    # FIXME: Check for .so files or other compiled artifacts, adjust tags accordingly.
 
     return {
         # "record": record,
