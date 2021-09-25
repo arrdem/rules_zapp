@@ -1,5 +1,5 @@
 """
-The Zapp compiler.
+The Zapp! compiler.
 """
 
 import argparse
@@ -29,13 +29,11 @@ parser.add_argument("manifest", help="The (JSON) manifest")
 MAIN_TEMPLATE = """\
 # -*- coding: utf-8 -*-
 
-\"\"\"Zapp-generated __main__\""\"
+\"\"\"Zapp!-generated __main__\""\"
 
 from importlib import import_module
 import os
 import sys
-# FIXME: This is absolutely implementation details.
-# Execing would be somewhat nicer
 from runpy import _run_module_as_main
 
 for script in {scripts!r}:
