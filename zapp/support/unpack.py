@@ -115,7 +115,11 @@ def unpack_zapp():
                     of.write(zf.read(src))
 
         # Re-exec the current interpreter
-        args = [sys.executable, "--", os.path.join(tmpdir, "usr", "__main__.py")] + sys.argv[1:]
+        args = [
+            sys.executable,
+            "--",
+            os.path.join(tmpdir, "usr", "__main__.py"),
+        ] + sys.argv[1:]
         os.execvpe(args[0], args[1:], {"PYTHONPATH": "", "ZAPP_TMPDIR": tmpdir})
 
     else:

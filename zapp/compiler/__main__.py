@@ -6,19 +6,18 @@ import argparse
 import io
 import json
 import os
-import ast
 import pathlib
-from itertools import chain
 import stat
 import sys
-from collections import defaultdict
 import zipfile
+from collections import defaultdict
 from email.parser import Parser
+from itertools import chain
 from shutil import move
 from tempfile import TemporaryDirectory
 
-from zapp.support.unpack import cache_wheel_path
 from zapp.support.pep425 import compress_tags, decompress_tag
+from zapp.support.unpack import cache_wheel_path
 
 parser = argparse.ArgumentParser(description="The (bootstrap) Zapp compiler")
 parser.add_argument("-o", "--out", dest="output", help="Output target file")
@@ -84,12 +83,14 @@ def load_wheel(opts, manifest, path):
 
     def _parse_email(msg):
         msg = Parser().parsestr(msg)
+
         def _get(k):
             v = msg.get_all(k)
             if len(v) == 1:
                 return v[0]
             else:
                 return v
+
         return {k: _get(k) for k in msg.keys()}
 
     # RECORD seems to just record file reference checksums for validation
@@ -104,7 +105,14 @@ def load_wheel(opts, manifest, path):
 
     prefix = os.path.dirname(path)
 
-    sources = [(dest, spec,) for dest, spec in manifest["sources"] if spec["source"].startswith(prefix)]
+    sources = [
+        (
+            dest,
+            spec,
+        )
+        for dest, spec in manifest["sources"]
+        if spec["source"].startswith(prefix)
+    ]
 
     return {
         # "record": record,
@@ -171,6 +179,7 @@ def rezip_wheels(opts, manifest):
 
         if opts.debug:
             from pprint import pprint
+
             print("---")
             pprint({"$type": "whl", **w})
 
@@ -186,7 +195,6 @@ def rezip_wheels(opts, manifest):
                 wf = str(wf)
             else:
                 wf = zip_wheel(opts.tmpdir, w)
-
 
             # Insert a new wheel source
             manifest["wheels"][wn] = {"hashes": [], "source": wf}
@@ -248,15 +256,19 @@ def enable_unzipping(opts, manifest):
     """Inject unzipping behavior as needed."""
 
     if manifest["wheels"]:
-        manifest["prelude_points"].extend([
-            "zapp.support.unpack:unpack_deps",
-            "zapp.support.unpack:install_deps",
-        ])
+        manifest["prelude_points"].extend(
+            [
+                "zapp.support.unpack:unpack_deps",
+                "zapp.support.unpack:install_deps",
+            ]
+        )
 
     if not manifest["zip_safe"]:
-        manifest["prelude_points"].extend([
-            "zapp.support.unpack:unpack_zapp",
-        ])
+        manifest["prelude_points"].extend(
+            [
+                "zapp.support.unpack:unpack_zapp",
+            ]
+        )
 
     return manifest
 

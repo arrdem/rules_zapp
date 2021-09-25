@@ -13,9 +13,9 @@ def decompress_tag(tag: str) -> t.Iterable[Tag]:
     """Decompress tag string into a sequence of compatible tuples."""
 
     pytags, abitags, archtags = tag.split("-", 2)
-    for x in pytags.split('.'):
-        for y in abitags.split('.'):
-            for z in archtags.split('.'):
+    for x in pytags.split("."):
+        for y in abitags.split("."):
+            for z in archtags.split("."):
                 yield Tag(x, y, z)
 
 
@@ -27,10 +27,12 @@ def compress_tags(tags: t.Iterable[Tag]) -> str:
     abitags = set(t.abi for t in tags)
     archtags = set(t.arch for t in tags)
 
-    tag = "-".join([
-        ".".join(sorted(pytags)),
-        ".".join(sorted(abitags)),
-        ".".join(sorted(archtags)),
-    ])
+    tag = "-".join(
+        [
+            ".".join(sorted(pytags)),
+            ".".join(sorted(abitags)),
+            ".".join(sorted(archtags)),
+        ]
+    )
     assert set(decompress_tag(tag)) == tags
     return tag
