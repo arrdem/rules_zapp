@@ -209,6 +209,7 @@ def zapp_binary(name,
                 test=False,
                 compiler=None,
                 zip_safe=True,
+                shebang=None,
                 _rule=_zapp,
                 **kwargs):
     """A self-contained, single-file Python program, with a .zapp file extension.
@@ -265,6 +266,7 @@ def zapp_binary(name,
         prelude_points = prelude_points,
         zip_safe = zip_safe,
         wheels = [name + ".whls"],
+        shebang = shebang,
     )
 
 
