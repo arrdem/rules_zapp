@@ -105,9 +105,6 @@ def _zapp_impl(ctx):
         stored_path = _store_path(input_file.short_path, ctx, import_roots)
         if stored_path:
             local_path = input_file.path
-            conflicts = [e for e in sources_map if e[0] == stored_path]
-            if conflicts:
-                print("File %s conflicts with others, %s" % (input_file, conflicts))
             sources_map.append([stored_path, local_path])
 
     _check_script(main_py_ref, sources_map)
@@ -154,7 +151,6 @@ def _zapp_impl(ctx):
         progress_message = "Building zapp file %s" % ctx.label,
         executable = ctx.executable.compiler,
         arguments = [
-            "--debug",
             "-o", ctx.outputs.executable.path,
             manifest_file.path
         ],

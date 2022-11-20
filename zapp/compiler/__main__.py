@@ -3,19 +3,16 @@ The Zapp! compiler.
 """
 
 import argparse
-import io
 import json
 import os
 import pathlib
 import stat
 import sys
 import zipfile
-from collections import defaultdict
 from email.parser import Parser
 from itertools import chain
 from pathlib import Path
 from pprint import pprint
-from shutil import move
 from tempfile import TemporaryDirectory
 
 from zapp.support.pep425 import compress_tags, decompress_tag

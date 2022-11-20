@@ -3,12 +3,10 @@ The Zapp compiler.
 """
 
 import argparse
-import io
 import json
 import os
 import pathlib
 import stat
-import sys
 import zipfile
 
 parser = argparse.ArgumentParser(description="The (bootstrap) Zapp compiler")
