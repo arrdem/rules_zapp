@@ -52,10 +52,10 @@ for script in {scripts!r}:
 """
 
 
-def dsub(d1, d2):
+def dsub(d1: dict, d2: dict) -> dict:
     """Dictionary subtraction. Remove k/vs from d1 if they occur in d2."""
 
-    return [(k, v) for k, v in d1 if not k in (_k for _k, _ in d2)]
+    return {k: v for k, v in d1.items() if k in d2 and v == d2[k]}
 
 
 def make_dunder_main(manifest):
@@ -106,7 +106,7 @@ def load_wheel(opts, manifest, path):
             dest,
             spec,
         )
-        for dest, spec in manifest["sources"]
+        for dest, spec in manifest["sources"].items()
         if spec["source"].startswith(prefix)
     ]
 
@@ -117,11 +117,11 @@ def load_wheel(opts, manifest, path):
             srcname, *_ = line.split(",")
             known_srcs.add(srcname)
 
-        sources = [
-            (dest, spec)
+        sources = {
+            dest: spec
             for dest, spec in sources
             if dest in known_srcs or not dest.endswith("__init__.py")
-        ]
+        }
 
         # FIXME: Check hashes & sizes of manifest-listed sources and abort on error/conflict.
 
@@ -166,7 +166,7 @@ def zip_wheel(tmpdir, wheel):
     wheel_file = os.path.join(tmpdir, wn)
 
     with zipfile.ZipFile(wheel_file, "w") as whl:
-        for dest, src in wheel["sources"]:
+        for dest, src in wheel["sources"].items():
             whl.write(src["source"], dest)
 
     try:
@@ -192,7 +192,7 @@ def rezip_wheels(opts, manifest):
 
     wheels = [
         load_wheel(opts, manifest, os.path.dirname(s["source"]))
-        for _, s in manifest["sources"]
+        for _, s in manifest["sources"].items()
         if s["source"].endswith("/WHEEL")
     ]
 
@@ -302,6 +302,13 @@ def enable_unzipping(opts, manifest):
     return manifest
 
 
+def fix_sources(opts, manifest):
+
+    manifest["sources"] = {f: m for f, m in manifest["sources"]}
+
+    return manifest
+
+
 def main():
     opts, args = parser.parse_known_args()
 
@@ -311,6 +318,7 @@ def main():
     with TemporaryDirectory() as d:
         setattr(opts, "tmpdir", d)
 
+        manifest = fix_sources(opts, manifest)
         manifest = rezip_wheels(opts, manifest)
         manifest = ensure_srcs_map(opts, manifest)
         manifest = enable_unzipping(opts, manifest)
