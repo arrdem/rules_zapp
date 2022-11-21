@@ -223,7 +223,7 @@ def rezip_wheels(opts, manifest):
                 wf = zip_wheel(opts.tmpdir, w)
 
             # Insert a new wheel source
-            manifest["wheels"][wn] = {"hashes": [], "source": wf}
+            manifest["wheels"][wn] = {"hashes": [], "source": wf, "manifest": w}
 
             # Insert the requirement
             manifest["requirements"][w["meta"]["Name"]] = w["meta"]["Version"]
