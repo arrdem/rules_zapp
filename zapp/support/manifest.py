@@ -1,5 +1,6 @@
 """The Zapp runtime manifest API."""
 
+import argparse
 import json
 from copy import deepcopy
 from importlib.resources import open_text
@@ -33,6 +34,22 @@ def manifest():
 
     with open_text("zapp", "manifest.json") as fp:
         return json.load(fp)
+
+
+PARSER = argparse.ArgumentParser()
+PARSER.add_argument("--json", action="store_const", const="json", dest="format", default="json")
+PARSER.add_argument("--requirements", action="store_const", const="requirements", dest="format")
+
+
+if __name__ == "__main__":
+    opts, args = PARSER.parse_known_args()
+
+    if opts.format == "json":
+        print(json.dumps(manifest()))
+
+    elif opts.format == "requirements":
+        for req, rev in manifest()["requirements"].items():
+            print("{}=={}".format(req, rev))
 
 
 __all__ = ["manifest"]

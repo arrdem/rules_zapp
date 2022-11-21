@@ -196,6 +196,8 @@ def rezip_wheels(opts, manifest):
         if s["source"].endswith("/WHEEL")
     ]
 
+    manifest["requirements"] = {}
+
     # Zip up the wheels and insert wheel records to the manifest
     for w in wheels:
         # Try to cheat and hit in the local cache first rather than building wheels every time
@@ -222,6 +224,9 @@ def rezip_wheels(opts, manifest):
 
             # Insert a new wheel source
             manifest["wheels"][wn] = {"hashes": [], "source": wf}
+
+            # Insert the requirement
+            manifest["requirements"][w["meta"]["Name"]] = w["meta"]["Version"]
 
     return manifest
 
