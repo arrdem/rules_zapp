@@ -55,7 +55,7 @@ for script in {scripts!r}:
 def dsub(d1: dict, d2: dict) -> dict:
     """Dictionary subtraction. Remove k/vs from d1 if they occur in d2."""
 
-    return {k: v for k, v in d1.items() if k in d2 and v == d2[k]}
+    return {k: v for k, v in d1.items() if k not in d2 or v != d2[k]}
 
 
 def make_dunder_main(manifest):
