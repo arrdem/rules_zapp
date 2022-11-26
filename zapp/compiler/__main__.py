@@ -12,7 +12,6 @@ import zipfile
 from email.parser import Parser
 from itertools import chain
 from pathlib import Path
-from pprint import pprint
 from tempfile import TemporaryDirectory
 
 from zapp.support.pep425 import compress_tags, decompress_tag
@@ -216,9 +215,9 @@ def rezip_wheels(opts, manifest):
                     pass
                 wf = str(wf)
             else:
-                if opts.debug:
-                    print("---")
-                    pprint({"$type": "whl", **w})
+                if opts.debug and False:
+                    print("\n---")
+                    json.dump({"$type": "whl", **w}, sys.stdout, indent=2)
 
                 wf = zip_wheel(opts.tmpdir, w)
 
@@ -330,15 +329,17 @@ def main():
         manifest = insert_manifest_json(opts, manifest)
 
         if opts.debug:
-            print("---")
-            pprint(
+            print("\n---")
+            json.dump(
                 {
                     "$type": "zapp",
                     "opts": {
                         k: getattr(opts, k) for k in dir(opts) if not k.startswith("_")
                     },
                     "manifest": manifest,
-                }
+                },
+                sys.stdout,
+                indent=2
             )
 
         with open(opts.output, "w") as zapp:
