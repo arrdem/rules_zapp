@@ -343,7 +343,11 @@ def main():
             )
 
         with open(opts.output, "w") as zapp:
-            shebang = "#!" + manifest["shebang"] + "\n"
+            shebang = manifest["shebang"]
+            if not shebang.endswith("\n"):
+                shebang = shebang + "\n"
+            if not shebang.startswith("#!"):
+                shebang = "#!" + shebang
             zapp.write(shebang)
 
         # Now we're gonna build the zapp from the manifest
