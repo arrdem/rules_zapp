@@ -141,6 +141,14 @@ def _zapp_impl(ctx):
         is_executable = False,
     )
 
+    args = [
+        "--debug",
+        "-o", ctx.outputs.executable.path,
+        manifest_file.path
+    ]
+    if ctx.attr.use_wheels:
+        args = ["--use-wheels"] + args
+
     # Run compiler
     ctx.actions.run(
         inputs = [
@@ -150,10 +158,7 @@ def _zapp_impl(ctx):
         outputs = [ctx.outputs.executable],
         progress_message = "Building zapp file %s" % ctx.label,
         executable = ctx.executable.compiler,
-        arguments = [
-            "-o", ctx.outputs.executable.path,
-            manifest_file.path
-        ],
+        arguments = args,
         mnemonic = "PythonCompile",
         use_default_shell_env = True,
         execution_requirements = {
@@ -177,13 +182,14 @@ _zapp_attrs = {
     "entry_point": attr.string(),
     "prelude_points": attr.string_list(),
     "zip_safe": attr.bool(default = True),
+    "use_wheels": attr.bool(default = False),
     # FIXME: These are really toolchain parameters, probably.
     "compiler": attr.label(
         default = Label(DEFAULT_COMPILER),
         executable = True,
         cfg = "host",
     ),
-    "shebang": attr.string(default = "/usr/bin/env %py3%"),
+    "shebang": attr.string(default = "#!/usr/bin/env %py3%"),
 }
 
 _zapp = rule(

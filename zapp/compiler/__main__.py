@@ -6,9 +6,11 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import stat
 import sys
 import zipfile
+from collections import defaultdict
 from email.parser import Parser
 from itertools import chain
 from pathlib import Path
@@ -20,6 +22,9 @@ from zapp.support.unpack import cache_wheel_path
 parser = argparse.ArgumentParser(description="The (bootstrap) Zapp compiler")
 parser.add_argument("-o", "--out", dest="output", help="Output target file")
 parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False)
+parser.add_argument(
+    "--use-wheels", dest="use_wheels", action="store_true", default=False
+)
 parser.add_argument("manifest", help="The (JSON) manifest")
 
 
@@ -51,6 +56,9 @@ for script in {scripts!r}:
 """
 
 
+whl_workspace_pattern = re.compile(r"^external/(?P<workspace>[^/]*?)/site-packages/")
+
+
 def dsub(d1: dict, d2: dict) -> dict:
     """Dictionary subtraction. Remove k/vs from d1 if they occur in d2."""
 
@@ -76,7 +84,7 @@ def dir_walk_prefixes(path):
         yield os.path.join(*segments)
 
 
-def load_wheel(opts, manifest, path):
+def load_wheel(opts, path):
     """Load a single wheel, returning ..."""
 
     def _parse_email(msg):
@@ -97,17 +105,8 @@ def load_wheel(opts, manifest, path):
     with open(os.path.join(path, "WHEEL")) as wheelf:
         wheel = _parse_email(wheelf.read())
 
-    prefix = os.path.dirname(path)
-
     # Naive glob of sources; note that bazel may hvae inserted empty __init__.py trash
-    sources = [
-        (
-            dest,
-            spec,
-        )
-        for dest, spec in manifest["sources"].items()
-        if spec["source"].startswith(prefix)
-    ]
+    sources = []
 
     # Retain only manifest-listed sources (dealing with __init__.py trash, but maybe not all conflicts)
     with open(os.path.join(path, "RECORD")) as recordf:
@@ -187,13 +186,23 @@ def rezip_wheels(opts, manifest):
 
     Wheels which are unzipped should be re-zipped into the cache, if not present in the cache.
 
-    Files sourced from unzipped wheels should be removed, and a single wheel reference inserted."""
+    Files sourced from unzipped wheels should be removed, and a single wheel reference inserted.
+    """
 
-    wheels = [
-        load_wheel(opts, manifest, os.path.dirname(s["source"]))
-        for _, s in manifest["sources"].items()
-        if s["source"].endswith("/WHEEL")
-    ]
+    whl_srcs = defaultdict(dict)
+    for k, s in list(manifest["sources"].items()):
+        src = s["source"]
+        m = re.match(whl_workspace_pattern, src)
+        if m:
+            whl_srcs[m.group(1)][re.sub(whl_workspace_pattern, "", src)] = s
+            del manifest["sources"][k]
+
+    wheels = []
+    for bundle in whl_srcs.values():
+        whlk = next((k for k in bundle.keys() if k.endswith("WHEEL")), None)
+        whl_manifest = load_wheel(opts, os.path.dirname(bundle[whlk]["source"]))
+        whl_manifest["sources"].update(bundle)
+        wheels.append(whl_manifest)
 
     manifest["requirements"] = {}
 
@@ -201,8 +210,6 @@ def rezip_wheels(opts, manifest):
     for w in wheels:
         # Try to cheat and hit in the local cache first rather than building wheels every time
         wn = wheel_name(w)
-        # Expunge sources available in the wheel
-        manifest["sources"] = dsub(manifest["sources"], w["sources"])
 
         # We may have a double-path dependency.
         # If we DON'T, we have to zip
@@ -302,7 +309,6 @@ def enable_unzipping(opts, manifest):
 
 
 def fix_sources(opts, manifest):
-
     manifest["sources"] = {f: m for f, m in manifest["sources"]}
 
     return manifest
@@ -318,7 +324,8 @@ def main():
         setattr(opts, "tmpdir", d)
 
         manifest = fix_sources(opts, manifest)
-        manifest = rezip_wheels(opts, manifest)
+        if opts.use_wheels:
+            manifest = rezip_wheels(opts, manifest)
         manifest = ensure_srcs_map(opts, manifest)
         manifest = enable_unzipping(opts, manifest)
         # Patch the manifest to insert needed __init__ files
@@ -339,7 +346,7 @@ def main():
                     "manifest": manifest,
                 },
                 sys.stdout,
-                indent=2
+                indent=2,
             )
 
         with open(opts.output, "w") as zapp:

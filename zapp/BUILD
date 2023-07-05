@@ -35,7 +35,7 @@ toolchain(
 # Zapp plugins used as a runtime library by rules_zapp
 py_library(
     name = "zapp_support",
-    srcs = glob(["support/**/*.py"]),
+    srcs = ["__init__.py"] + glob(["support/**/*.py"]),
     imports = [
         "..",
     ]

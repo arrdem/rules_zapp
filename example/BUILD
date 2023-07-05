@@ -40,6 +40,9 @@ py_test(
     name = "hello_native",
     main = "hello.py",
     srcs = ["hello.py"],
+    deps = [
+        py_requirement("pyyaml"),
+    ]
 )
 
 zapp_test(
@@ -72,7 +75,6 @@ zapp_test(
         ":lib_hello",
     ],
 )
-
 
 zapp_test(
     name = "hello_unzipped",
