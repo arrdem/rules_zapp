@@ -223,8 +223,8 @@ def rezip_wheels(opts, manifest):
                 wf = str(wf)
             else:
                 if opts.debug and False:
-                    print("\n---")
-                    json.dump({"$type": "whl", **w}, sys.stdout, indent=2)
+                    print("\n---", file=sys.stderr)
+                    json.dump({"$type": "whl", **w}, sys.stderr, indent=2)
 
                 wf = zip_wheel(opts.tmpdir, w)
 
@@ -336,7 +336,7 @@ def main():
         manifest = insert_manifest_json(opts, manifest)
 
         if opts.debug:
-            print("\n---")
+            print("\n---", file=sys.stderr)
             json.dump(
                 {
                     "$type": "zapp",
@@ -345,7 +345,7 @@ def main():
                     },
                     "manifest": manifest,
                 },
-                sys.stdout,
+                sys.stderr,
                 indent=2,
             )
 

@@ -142,12 +142,13 @@ def _zapp_impl(ctx):
     )
 
     args = [
-        "--debug",
         "-o", ctx.outputs.executable.path,
         manifest_file.path
     ]
     if ctx.attr.use_wheels:
         args = ["--use-wheels"] + args
+    if ctx.attr.debug:
+        args = ["--debug"] + args
 
     # Run compiler
     ctx.actions.run(
@@ -183,6 +184,7 @@ _zapp_attrs = {
     "prelude_points": attr.string_list(),
     "zip_safe": attr.bool(default = True),
     "use_wheels": attr.bool(default = False),
+    "debug": attr.bool(default = False),
     # FIXME: These are really toolchain parameters, probably.
     "compiler": attr.label(
         default = Label(DEFAULT_COMPILER),
